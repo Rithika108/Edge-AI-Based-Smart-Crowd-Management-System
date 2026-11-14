@@ -6,15 +6,15 @@ Shows:  Total Count | Max Capacity | Remaining | Occupancy % | Status
         Live line graph of the last 10 minutes
         RED banner   "ALERT: CAPACITY EXCEEDED"  when OVERCROWDED
         GREEN banner "SAFE"                      when SAFE
-        (ORANGE banner for NEAR CAPACITY)
+        AMBER banner "MODERATE"                  when MODERATE
+        ORANGE banner for NEAR CAPACITY
         Email status line (filled in by Mem 3 / Mem 4)
 
 Only the Python standard library is used. Run in IDLE with F5.
 
-INPUT FILES (written by other members)
-  max_capacity.json : from Mem 1. Any JSON with a key containing the word
-                      "capacity" works, e.g. {"max_capacity": 40}
-  live_count.txt    : current people count (a single number)
+INPUT FILES (written by phase1_crowd_monitor.py in this script's folder)
+  max_capacity.json : room's maximum occupancy, e.g. {"max_capacity": 40}
+  live_count.txt    : current people count, updated while the video is processed
 
 HOW MAIN.PY USES THIS MODULE
     import tkinter as tk
@@ -35,20 +35,24 @@ from collections import deque
 from tkinter import ttk
 
 # ---------------------------------------------------------------- settings
-MAX_CAPACITY_FILE = "max_capacity.json"
-LIVE_COUNT_FILE = "live_count.txt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAX_CAPACITY_FILE = os.path.join(BASE_DIR, "max_capacity.json")
+LIVE_COUNT_FILE = os.path.join(BASE_DIR, "live_count.txt")
 FALLBACK_CAPACITY = 50          # used only if max_capacity.json is missing
-NEAR_PERCENT = 80               # >= this % (and <= 100) = NEAR CAPACITY
+MODERATE_PERCENT = 50
+NEAR_PERCENT = 75
 WINDOW_SEC = 600                # graph shows last 10 minutes
-REFRESH_MS = 1000               # dashboard refresh every 1 second
+REFRESH_MS = 250                # refresh often enough to follow processed video
 
 COLORS = {
     "SAFE": "#1e9e4a",
+    "MODERATE": "#c27c0e",
     "NEAR CAPACITY": "#e67e22",
     "OVERCROWDED": "#d62828",
 }
 BANNER_TEXT = {
     "SAFE": "SAFE",
+    "MODERATE": "MODERATE",
     "NEAR CAPACITY": "WARNING: NEAR CAPACITY",
     "OVERCROWDED": "ALERT: CAPACITY EXCEEDED",
 }
@@ -94,10 +98,12 @@ def read_live_count(path=LIVE_COUNT_FILE):
 def get_status(count, max_capacity):
     """Return (status, occupancy_percent)."""
     occ = 100.0 * count / max_capacity if max_capacity else 0.0
-    if count > max_capacity:
+    if occ >= 100:
         return "OVERCROWDED", occ
     if occ >= NEAR_PERCENT:
         return "NEAR CAPACITY", occ
+    if occ >= MODERATE_PERCENT:
+        return "MODERATE", occ
     return "SAFE", occ
 
 
